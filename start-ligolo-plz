@@ -1,0 +1,61 @@
+#!/bin/bash
+# start-ligolo-plz automates the startup and management of Ligolo
+# Written specifically to aid in OSCP AD pivoting
+# Author: Richard Im (@richeeta)
+# 
+# IMPORTANT: Presumes that you have ligolo-ng saved in your ~ directory.
+# NOTE: Modify the send "1\r" line if you wanna use a different listener than listener #1.
+# USAGE: Just do chmod +x start-ligolo-plz then ./start-ligolo-plz
+
+# Checks if ligolo interface exists and deletes if it does
+if ip link show ligolo &> /dev/null; then
+    echo "Ligolo interface already exists, deleting it..."
+    sudo ip link delete ligolo
+fi
+
+# Start Ligolo listener setup
+sudo ip tuntap add user kali mode tun ligolo
+sudo ip link set ligolo up
+
+# Function to parse IP, check if it matches 10.10.x.x or 172.16.x.x, and add route
+add_route() {
+    local ip_address=$(ifconfig ligolo | grep 'inet ' | awk '{print $2}')
+    local base_ip=$(echo $ip_address | cut -d'.' -f1-3)
+
+    # Check if IP starts with "10.10" or "172.16"
+    if [[ $base_ip == 10.10.* || $base_ip == 172.16.* ]]; then
+        local new_route="${base_ip}.0/24"
+        echo "Adding route: $new_route"
+        sudo ip route add $new_route dev ligolo
+        echo "Current routes:"
+        sudo ip route list
+    else
+        echo "IP address $ip_address does not match required prefixes (10.10.x.x or 172.16.x.x)."
+    fi
+}
+
+# Start Ligolo listener and wait for agent
+sudo ~/ligolo-ng/proxy -selfcert &
+
+# Use expect to automate interaction
+/usr/bin/expect <<EOF
+set timeout -1
+spawn tail -f ~/ligolo-ng/logs/log.txt
+expect {
+    -re {.*Agent joined.*} {
+        # After "Agent joined" is detected, execute further commands
+        spawn bash
+        send "session\r"
+        expect "Specify a session:"
+        send "1\r"
+        expect "$ "
+        send "start\r"
+        expect "$ "
+        send "exit\r"
+        expect eof
+    }
+}
+EOF
+
+# Call function to parse IP and add route
+add_route
